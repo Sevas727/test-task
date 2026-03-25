@@ -220,7 +220,7 @@ describe('WeatherApiService', () => {
     });
 
     it('throws a rate-limit message for 429', async () => {
-      fetchMock.mockResolvedValueOnce(
+      fetchMock.mockResolvedValue(
         makeFetchResponse(429, { cod: 429, message: 'exceeded rate limit' })
       );
 
@@ -230,7 +230,7 @@ describe('WeatherApiService', () => {
     });
 
     it('propagates the API error message for other non-ok statuses', async () => {
-      fetchMock.mockResolvedValueOnce(
+      fetchMock.mockResolvedValue(
         makeFetchResponse(500, { cod: 500, message: 'Internal server error' })
       );
 
@@ -240,7 +240,7 @@ describe('WeatherApiService', () => {
     });
 
     it('falls back to generic message when API returns no message', async () => {
-      fetchMock.mockResolvedValueOnce(makeFetchResponse(503, { cod: 503, message: '' }));
+      fetchMock.mockResolvedValue(makeFetchResponse(503, { cod: 503, message: '' }));
 
       await expect(WeatherApiService.getWeatherByCity('London')).rejects.toThrow(
         'Failed to fetch weather data'
@@ -253,16 +253,85 @@ describe('WeatherApiService', () => {
   // -------------------------------------------------------------------------
 
   describe('network error handling', () => {
-    it('re-throws Error instances from fetch directly', async () => {
-      fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    it('re-throws Error instances from fetch directly after retries are exhausted', async () => {
+      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
 
       await expect(WeatherApiService.getWeatherByCity('London')).rejects.toThrow('Failed to fetch');
     });
 
     it('wraps non-Error rejections in a generic network error', async () => {
-      fetchMock.mockRejectedValueOnce('unexpected string error');
+      fetchMock.mockRejectedValue('unexpected string error');
 
       await expect(WeatherApiService.getWeatherByCity('London')).rejects.toThrow('Network error');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Retry with exponential backoff
+  // -------------------------------------------------------------------------
+
+  describe('retry with exponential backoff', () => {
+    it('retries on network failure and succeeds on subsequent attempt', async () => {
+      fetchMock
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValueOnce(makeFetchResponse(200, mockWeatherData));
+
+      const result = await WeatherApiService.getWeatherByCity('London');
+
+      expect(result).toEqual(mockWeatherData);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries up to 3 times before throwing', async () => {
+      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+      await expect(WeatherApiService.getWeatherByCity('London')).rejects.toThrow('Failed to fetch');
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not retry on HTTP 404 (client error)', async () => {
+      fetchMock.mockResolvedValueOnce(
+        makeFetchResponse(404, { cod: '404', message: 'city not found' })
+      );
+
+      await expect(WeatherApiService.getWeatherByCity('BadCity')).rejects.toThrow(
+        'City "BadCity" not found'
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry on HTTP 401 (auth error)', async () => {
+      fetchMock.mockResolvedValueOnce(
+        makeFetchResponse(401, { cod: 401, message: 'Invalid API key' })
+      );
+
+      await expect(WeatherApiService.getWeatherByCity('London')).rejects.toThrow('Invalid API key');
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries on HTTP 500 (server error) and succeeds', async () => {
+      fetchMock
+        .mockResolvedValueOnce(makeFetchResponse(500, { cod: 500, message: 'Internal error' }))
+        .mockResolvedValueOnce(makeFetchResponse(200, mockWeatherData));
+
+      const result = await WeatherApiService.getWeatherByCity('London');
+
+      expect(result).toEqual(mockWeatherData);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries on HTTP 429 (rate limit) and succeeds', async () => {
+      fetchMock
+        .mockResolvedValueOnce(makeFetchResponse(429, { cod: 429, message: 'rate limit' }))
+        .mockResolvedValueOnce(makeFetchResponse(200, mockWeatherData));
+
+      const result = await WeatherApiService.getWeatherByCity('London');
+
+      expect(result).toEqual(mockWeatherData);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
   });
 });

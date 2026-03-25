@@ -1,6 +1,12 @@
 import './App.css';
 import { useWeatherApi, useSearchHistory, useUndo } from './hooks';
-import { SearchForm, WeatherCard, SearchHistory, UndoNotification } from './components';
+import {
+  SearchForm,
+  WeatherCard,
+  WeatherCardSkeleton,
+  SearchHistory,
+  UndoNotification,
+} from './components';
 import type { SearchHistoryItem } from './types';
 
 function App() {
@@ -45,7 +51,13 @@ function App() {
         </div>
       )}
 
-      {data && <WeatherCard data={data} />}
+      {loading && <WeatherCardSkeleton />}
+
+      {data && !loading && (
+        <div className="animate-fade-in">
+          <WeatherCard data={data} />
+        </div>
+      )}
 
       <div className="w-full max-w-md mt-8">
         <SearchHistory
