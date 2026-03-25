@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { SearchHistoryItem } from '../../types';
 
 interface SearchHistoryProps {
@@ -6,7 +7,11 @@ interface SearchHistoryProps {
   onItemRemove: (id: string) => void;
 }
 
+const ANIMATION_DURATION = 300;
+
 export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHistoryProps) => {
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
   if (history.length === 0) {
     return (
       <div className="text-center text-gray-500 py-8">
@@ -26,6 +31,14 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
     return date.toLocaleDateString();
   };
 
+  const handleRemove = (id: string) => {
+    setRemovingId(id);
+    setTimeout(() => {
+      onItemRemove(id);
+      setRemovingId(null);
+    }, ANIMATION_DURATION);
+  };
+
   return (
     <div className="w-full">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Search History</h2>
@@ -33,7 +46,9 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
         {history.map((item) => (
           <div
             key={item.id}
-            className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
+            className={`bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow overflow-hidden ${
+              removingId === item.id ? 'animate-fade-out-left' : ''
+            }`}
           >
             <div className="flex items-center justify-between">
               <button
@@ -64,7 +79,7 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onItemRemove(item.id);
+                  handleRemove(item.id);
                 }}
                 className="ml-4 text-red-500 hover:text-red-700 transition-colors p-2"
                 aria-label={`Remove ${item.cityName} from history`}

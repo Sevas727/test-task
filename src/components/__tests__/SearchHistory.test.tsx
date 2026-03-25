@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SearchHistory } from '../SearchHistory/SearchHistory';
 import type { SearchHistoryItem } from '../../types';
@@ -191,8 +191,9 @@ describe('SearchHistory', () => {
       expect(onItemClick).toHaveBeenCalledWith('London');
     });
 
-    it('calls onItemRemove with item id when the remove button is clicked', async () => {
-      const user = userEvent.setup();
+    it('calls onItemRemove with item id after the delete animation', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
       render(
         <SearchHistory
@@ -204,11 +205,22 @@ describe('SearchHistory', () => {
 
       await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
 
-      expect(onItemRemove).toHaveBeenCalledWith('remove-me');
+      // Not called yet — animation in progress
+      expect(onItemRemove).not.toHaveBeenCalled();
+
+      // After animation duration (300ms)
+      vi.advanceTimersByTime(300);
+
+      await waitFor(() => {
+        expect(onItemRemove).toHaveBeenCalledWith('remove-me');
+      });
+
+      vi.useRealTimers();
     });
 
-    it('does not trigger onItemClick when remove button is clicked', async () => {
-      const user = userEvent.setup();
+    it('applies exit animation class on remove click', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
       render(
         <SearchHistory
@@ -220,7 +232,34 @@ describe('SearchHistory', () => {
 
       await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
 
+      const card = screen
+        .getByRole('button', { name: 'View weather for London' })
+        .closest('.bg-white');
+      expect(card).toHaveClass('animate-fade-out-left');
+
+      vi.advanceTimersByTime(300);
+      vi.useRealTimers();
+    });
+
+    it('does not trigger onItemClick when remove button is clicked', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      render(
+        <SearchHistory
+          history={[makeHistoryItem()]}
+          onItemClick={onItemClick}
+          onItemRemove={onItemRemove}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
+
+      vi.advanceTimersByTime(300);
+
       expect(onItemClick).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
   });
 

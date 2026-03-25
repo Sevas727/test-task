@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 import type { WeatherData } from '../types';
@@ -83,6 +83,7 @@ beforeEach(() => {
   mockStorage._reset();
   vi.mocked(StorageService.getSearchHistory).mockClear();
   vi.mocked(StorageService.addToHistory).mockClear();
+  vi.mocked(StorageService.removeFromHistory).mockClear();
 });
 
 // ---------------------------------------------------------------------------
@@ -156,5 +157,68 @@ describe('US3: Click History Item', () => {
 
     // addToHistory called again → StorageService deduplicates, updating the entry
     expect(StorageService.addToHistory).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — US4: Remove History Item
+// ---------------------------------------------------------------------------
+
+describe('US4: Remove History Item', () => {
+  it('removes a history item when the delete button is clicked', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mockGetWeatherByCity.mockResolvedValue(mockWeatherData);
+
+    render(<App />);
+
+    // Search to create a history entry
+    await searchForCity(user, 'London');
+    expect(await screen.findByRole('heading', { name: 'London, GB' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View weather for London' })).toBeInTheDocument();
+
+    // Click the remove button
+    await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
+
+    // Advance past the animation duration (300ms)
+    vi.advanceTimersByTime(300);
+
+    // After animation, the item should be removed from storage
+    await waitFor(() => {
+      expect(StorageService.removeFromHistory).toHaveBeenCalledTimes(1);
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('applies the exit animation class before removing', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mockGetWeatherByCity.mockResolvedValue(mockWeatherData);
+
+    render(<App />);
+
+    await searchForCity(user, 'London');
+    expect(await screen.findByRole('heading', { name: 'London, GB' })).toBeInTheDocument();
+
+    // Click remove — the animation class should be applied immediately
+    await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
+
+    // The item container should have the animation class
+    const historyButton = screen.getByRole('button', { name: 'View weather for London' });
+    const card = historyButton.closest('.bg-white');
+    expect(card).toHaveClass('animate-fade-out-left');
+
+    // The actual removal hasn't happened yet
+    expect(StorageService.removeFromHistory).not.toHaveBeenCalled();
+
+    // After animation completes
+    vi.advanceTimersByTime(300);
+
+    await waitFor(() => {
+      expect(StorageService.removeFromHistory).toHaveBeenCalledTimes(1);
+    });
+
+    vi.useRealTimers();
   });
 });

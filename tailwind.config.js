@@ -5,7 +5,22 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      keyframes: {
+        'slide-up': {
+          '0%': { transform: 'translateY(100%)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        'fade-out-left': {
+          '0%': { opacity: '1', transform: 'translateX(0)', maxHeight: '200px' },
+          '100%': { opacity: '0', transform: 'translateX(-20px)', maxHeight: '0px' },
+        },
+      },
+      animation: {
+        'slide-up': 'slide-up 0.3s ease-out',
+        'fade-out-left': 'fade-out-left 0.3s ease-out forwards',
+      },
+    },
   },
   plugins: [],
 }
