@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 import type { WeatherData } from '../types';
@@ -218,6 +218,136 @@ describe('US4: Remove History Item', () => {
     await waitFor(() => {
       expect(StorageService.removeFromHistory).toHaveBeenCalledTimes(1);
     });
+
+    vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — US5: Undo Remove
+// ---------------------------------------------------------------------------
+
+describe('US5: Undo Remove', () => {
+  it('shows an undo notification when a history item is removed', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mockGetWeatherByCity.mockResolvedValue(mockWeatherData);
+
+    render(<App />);
+
+    // Create a history entry
+    await searchForCity(user, 'London');
+    expect(await screen.findByRole('heading', { name: 'London, GB' })).toBeInTheDocument();
+
+    // Remove the history item
+    await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
+
+    // Advance past delete animation (300ms)
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Undo notification should appear
+    expect(screen.getByText(/London.*removed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('restores the history item when Undo is clicked', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mockGetWeatherByCity.mockResolvedValue(mockWeatherData);
+
+    render(<App />);
+
+    // Create a history entry
+    await searchForCity(user, 'London');
+    expect(await screen.findByRole('heading', { name: 'London, GB' })).toBeInTheDocument();
+
+    // Verify the history item exists
+    expect(screen.getByRole('button', { name: 'View weather for London' })).toBeInTheDocument();
+
+    // Remove the history item
+    await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
+
+    // Advance past delete animation (300ms)
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Item should be removed from history
+    expect(
+      screen.queryByRole('button', { name: 'View weather for London' })
+    ).not.toBeInTheDocument();
+
+    // Click Undo
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    // Item should be restored in history
+    expect(screen.getByRole('button', { name: 'View weather for London' })).toBeInTheDocument();
+
+    // Undo notification should disappear
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('dismisses the undo notification when close button is clicked', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mockGetWeatherByCity.mockResolvedValue(mockWeatherData);
+
+    render(<App />);
+
+    // Create a history entry and remove it
+    await searchForCity(user, 'London');
+    expect(await screen.findByRole('heading', { name: 'London, GB' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
+
+    // Advance past delete animation (300ms)
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Notification visible
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+
+    // Close it
+    await user.click(screen.getByRole('button', { name: 'Close notification' }));
+
+    // Notification gone
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('auto-dismisses the undo notification after 5 seconds', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mockGetWeatherByCity.mockResolvedValue(mockWeatherData);
+
+    render(<App />);
+
+    // Create a history entry and remove it
+    await searchForCity(user, 'London');
+    expect(await screen.findByRole('heading', { name: 'London, GB' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove London from history' }));
+
+    // Advance past delete animation (300ms)
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+
+    // Advance 5 seconds for undo timeout
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    // Notification should be gone
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
 
     vi.useRealTimers();
   });

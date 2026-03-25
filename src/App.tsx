@@ -1,10 +1,13 @@
 import './App.css';
-import { useWeatherApi, useSearchHistory } from './hooks';
-import { SearchForm, WeatherCard, SearchHistory } from './components';
+import { useWeatherApi, useSearchHistory, useUndo } from './hooks';
+import { SearchForm, WeatherCard, SearchHistory, UndoNotification } from './components';
+import type { SearchHistoryItem } from './types';
 
 function App() {
   const { data, loading, error, fetchWeather, clearError } = useWeatherApi();
-  const { history, addToHistory, removeFromHistory } = useSearchHistory();
+  const { history, addToHistory, removeFromHistory, restoreToHistory } = useSearchHistory();
+  const { undoItem, setUndoItem, executeUndo, clearUndo } =
+    useUndo<SearchHistoryItem>(restoreToHistory);
 
   const handleSearch = (cityName: string) => {
     clearError();
@@ -22,7 +25,10 @@ function App() {
   };
 
   const handleHistoryRemove = (id: string) => {
-    removeFromHistory(id);
+    const removedItem = removeFromHistory(id);
+    if (removedItem) {
+      setUndoItem(removedItem);
+    }
   };
 
   return (
@@ -48,6 +54,14 @@ function App() {
           onItemRemove={handleHistoryRemove}
         />
       </div>
+
+      {undoItem && (
+        <UndoNotification
+          message={`${undoItem.cityName} removed from history`}
+          onUndo={executeUndo}
+          onClose={clearUndo}
+        />
+      )}
     </div>
   );
 }
