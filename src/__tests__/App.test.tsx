@@ -87,6 +87,73 @@ beforeEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+// Tests — US1: Weather Display (SearchForm → API → Results)
+// ---------------------------------------------------------------------------
+
+describe('US1: Weather Display', () => {
+  it('displays weather data after a successful search', async () => {
+    const user = userEvent.setup();
+    mockGetWeatherByCity.mockResolvedValue(mockWeatherData);
+
+    render(<App />);
+
+    await searchForCity(user, 'London');
+
+    // Weather card should display with all key data
+    const heading = await screen.findByRole('heading', { name: 'London, GB' });
+    const weatherCard = heading.closest('.bg-white') as HTMLElement;
+    expect(heading).toBeInTheDocument();
+    expect(within(weatherCard).getByText('16°C')).toBeInTheDocument();
+    expect(within(weatherCard).getByText('few clouds')).toBeInTheDocument();
+    expect(within(weatherCard).getByText('76%')).toBeInTheDocument();
+    expect(within(weatherCard).getByText('4.1 m/s')).toBeInTheDocument();
+  });
+
+  it('displays an error message when the API call fails', async () => {
+    const user = userEvent.setup();
+    mockGetWeatherByCity.mockRejectedValue(
+      new Error('City "BadCity" not found. Please check the spelling and try again.')
+    );
+
+    render(<App />);
+
+    await searchForCity(user, 'BadCity');
+
+    // Error alert should be visible
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'City "BadCity" not found. Please check the spelling and try again.'
+    );
+
+    // No weather card should be shown
+    expect(screen.queryByText('°C')).not.toBeInTheDocument();
+  });
+
+  it('clears a previous error when a new search succeeds', async () => {
+    const user = userEvent.setup();
+
+    // First search fails
+    mockGetWeatherByCity.mockRejectedValueOnce(new Error('City not found'));
+
+    render(<App />);
+
+    await searchForCity(user, 'BadCity');
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    // Second search succeeds
+    mockGetWeatherByCity.mockResolvedValueOnce(mockWeatherData);
+
+    // Clear input and search again
+    const input = screen.getByLabelText('City name');
+    await user.clear(input);
+    await searchForCity(user, 'London');
+
+    expect(await screen.findByRole('heading', { name: 'London, GB' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Tests — US3: Click History Item
 // ---------------------------------------------------------------------------
 
