@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { StorageService } from '../services';
-import type { SearchHistoryItem, WeatherData } from '../types';
+import type { SearchHistoryItem, WeatherData, IStorageService } from '../types';
 
 /**
  * Custom hook for managing search history
  * Handles CRUD operations and localStorage sync
+ * Accepts an optional storage service for dependency injection (defaults to StorageService)
  */
-export const useSearchHistory = () => {
+export const useSearchHistory = (storage: IStorageService = StorageService) => {
   // Initialize state with lazy initialization to avoid effect
-  const [history, setHistory] = useState<SearchHistoryItem[]>(() =>
-    StorageService.getSearchHistory()
-  );
+  const [history, setHistory] = useState<SearchHistoryItem[]>(() => storage.getSearchHistory());
 
   const addToHistory = (weatherData: WeatherData) => {
     const newItem: SearchHistoryItem = {
@@ -30,27 +29,27 @@ export const useSearchHistory = () => {
       },
     };
 
-    StorageService.addToHistory(newItem);
-    setHistory(StorageService.getSearchHistory());
+    storage.addToHistory(newItem);
+    setHistory(storage.getSearchHistory());
   };
 
   const removeFromHistory = (id: string): SearchHistoryItem | null => {
     const itemToRemove = history.find((item) => item.id === id);
     if (itemToRemove) {
-      StorageService.removeFromHistory(id);
-      setHistory(StorageService.getSearchHistory());
+      storage.removeFromHistory(id);
+      setHistory(storage.getSearchHistory());
       return itemToRemove;
     }
     return null;
   };
 
   const restoreToHistory = (item: SearchHistoryItem) => {
-    StorageService.addToHistory(item);
-    setHistory(StorageService.getSearchHistory());
+    storage.addToHistory(item);
+    setHistory(storage.getSearchHistory());
   };
 
   const clearHistory = () => {
-    StorageService.clearHistory();
+    storage.clearHistory();
     setHistory([]);
   };
 

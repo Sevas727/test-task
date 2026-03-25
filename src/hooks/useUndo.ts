@@ -1,19 +1,29 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 /**
- * Custom hook for undo functionality
- * Manages undo state with automatic timeout
+ * Command pattern interface for undo operations.
+ * Each command encapsulates the data and the action to reverse a deletion.
  */
+export interface UndoCommand<T> {
+  readonly item: T;
+  execute(): void;
+}
 
 interface UndoState<T> {
-  item: T | null;
+  command: UndoCommand<T> | null;
 }
 
 const UNDO_TIMEOUT = 5000; // 5 seconds
 
+/**
+ * Custom hook for undo functionality using the Command pattern.
+ * Manages an undo command with automatic timeout.
+ *
+ * @param onUndo - callback invoked with the item when undo is executed
+ */
 export const useUndo = <T>(onUndo: (item: T) => void) => {
   const [undoState, setUndoState] = useState<UndoState<T>>({
-    item: null,
+    command: null,
   });
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -27,25 +37,36 @@ export const useUndo = <T>(onUndo: (item: T) => void) => {
     };
   }, []);
 
-  const setUndoItem = useCallback((item: T) => {
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  const setUndoItem = useCallback(
+    (item: T) => {
+      // Clear existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    // Set new timeout
-    const timeoutId = setTimeout(() => {
-      setUndoState({ item: null });
-      timeoutRef.current = null;
-    }, UNDO_TIMEOUT);
+      // Create a command that encapsulates the undo action
+      const command: UndoCommand<T> = {
+        item,
+        execute() {
+          onUndo(item);
+        },
+      };
 
-    timeoutRef.current = timeoutId;
-    setUndoState({ item });
-  }, []);
+      // Set new timeout
+      const timeoutId = setTimeout(() => {
+        setUndoState({ command: null });
+        timeoutRef.current = null;
+      }, UNDO_TIMEOUT);
+
+      timeoutRef.current = timeoutId;
+      setUndoState({ command });
+    },
+    [onUndo]
+  );
 
   const executeUndo = useCallback(() => {
-    if (undoState.item) {
-      onUndo(undoState.item);
+    if (undoState.command) {
+      undoState.command.execute();
 
       // Clear timeout
       if (timeoutRef.current) {
@@ -53,20 +74,20 @@ export const useUndo = <T>(onUndo: (item: T) => void) => {
         timeoutRef.current = null;
       }
 
-      setUndoState({ item: null });
+      setUndoState({ command: null });
     }
-  }, [undoState.item, onUndo]);
+  }, [undoState.command]);
 
   const clearUndo = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    setUndoState({ item: null });
+    setUndoState({ command: null });
   }, []);
 
   return {
-    undoItem: undoState.item,
+    undoItem: undoState.command?.item ?? null,
     setUndoItem,
     executeUndo,
     clearUndo,

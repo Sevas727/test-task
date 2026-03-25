@@ -1,11 +1,12 @@
 import type { WeatherData } from '../../types';
+import { getWeatherIconUrl } from '../../utils';
 
 interface WeatherCardProps {
   data: WeatherData;
 }
 
 export const WeatherCard = ({ data }: WeatherCardProps) => {
-  const iconUrl = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+  const iconUrl = getWeatherIconUrl(data.weather[0].icon, 'large');
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">

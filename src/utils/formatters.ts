@@ -32,6 +32,14 @@ export const celsiusToFahrenheit = (celsius: number): number => {
 };
 
 /**
+ * Returns the OpenWeatherMap icon URL for a given icon code
+ */
+export const getWeatherIconUrl = (icon: string, size: 'small' | 'large' = 'small'): string => {
+  const suffix = size === 'large' ? '@2x' : '';
+  return `https://openweathermap.org/img/wn/${icon}${suffix}.png`;
+};
+
+/**
  * Formats wind speed
  */
 export const formatWindSpeed = (speed: number, unit: 'metric' | 'imperial' = 'metric'): string => {

@@ -1,5 +1,6 @@
-import { useState } from 'react';
 import type { SearchHistoryItem } from '../../types';
+import { formatRelativeTime, getWeatherIconUrl } from '../../utils';
+import { useAnimatedRemove } from '../../hooks';
 
 interface SearchHistoryProps {
   history: SearchHistoryItem[];
@@ -7,10 +8,8 @@ interface SearchHistoryProps {
   onItemRemove: (id: string) => void;
 }
 
-const ANIMATION_DURATION = 300;
-
 export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHistoryProps) => {
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  const { removingId, triggerRemove } = useAnimatedRemove(onItemRemove);
 
   if (history.length === 0) {
     return (
@@ -19,25 +18,6 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
       </div>
     );
   }
-
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
-
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return date.toLocaleDateString();
-  };
-
-  const handleRemove = (id: string) => {
-    setRemovingId(id);
-    setTimeout(() => {
-      onItemRemove(id);
-      setRemovingId(null);
-    }, ANIMATION_DURATION);
-  };
 
   return (
     <div className="w-full">
@@ -57,7 +37,7 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
                 aria-label={`View weather for ${item.cityName}`}
               >
                 <img
-                  src={`https://openweathermap.org/img/wn/${item.weatherSnapshot.icon}.png`}
+                  src={getWeatherIconUrl(item.weatherSnapshot.icon)}
                   alt={item.weatherSnapshot.description}
                   className="w-12 h-12"
                 />
@@ -69,7 +49,7 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
                     {item.weatherSnapshot.description}
                   </div>
                   <div className="text-xs text-gray-400 mt-1">
-                    {formatTimestamp(item.timestamp)}
+                    {formatRelativeTime(item.timestamp)}
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-gray-800">
@@ -79,7 +59,7 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleRemove(item.id);
+                  triggerRemove(item.id);
                 }}
                 className="ml-4 text-red-500 hover:text-red-700 transition-colors p-2"
                 aria-label={`Remove ${item.cityName} from history`}
