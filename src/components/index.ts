@@ -1,5 +1,5 @@
 export { SearchForm } from './SearchForm';
-export { WeatherCard } from './WeatherCard';
 export { WeatherCardSkeleton } from './WeatherCard/WeatherCardSkeleton';
-export { SearchHistory } from './SearchHistory';
-export { UndoNotification } from './UndoNotification';
+
+// WeatherCard, SearchHistory, UndoNotification are lazy-loaded in App.tsx
+// Do NOT re-export them here to preserve code splitting

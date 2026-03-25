@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { WeatherData } from '../../types';
 import { getWeatherIconUrl } from '../../utils';
 
@@ -5,7 +6,7 @@ interface WeatherCardProps {
   data: WeatherData;
 }
 
-export const WeatherCard = ({ data }: WeatherCardProps) => {
+export const WeatherCard = memo(({ data }: WeatherCardProps) => {
   const iconUrl = getWeatherIconUrl(data.weather[0].icon, 'large');
 
   return (
@@ -51,4 +52,6 @@ export const WeatherCard = ({ data }: WeatherCardProps) => {
       </div>
     </div>
   );
-};
+});
+
+WeatherCard.displayName = 'WeatherCard';

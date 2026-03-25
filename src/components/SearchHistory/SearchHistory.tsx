@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { SearchHistoryItem } from '../../types';
 import { formatRelativeTime, getWeatherIconUrl } from '../../utils';
 import { useAnimatedRemove } from '../../hooks';
@@ -8,7 +9,7 @@ interface SearchHistoryProps {
   onItemRemove: (id: string) => void;
 }
 
-export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHistoryProps) => {
+export const SearchHistory = memo(({ history, onItemClick, onItemRemove }: SearchHistoryProps) => {
   const { removingId, triggerRemove } = useAnimatedRemove(onItemRemove);
 
   if (history.length === 0) {
@@ -83,4 +84,6 @@ export const SearchHistory = ({ history, onItemClick, onItemRemove }: SearchHist
       </div>
     </div>
   );
-};
+});
+
+SearchHistory.displayName = 'SearchHistory';

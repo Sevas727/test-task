@@ -1,11 +1,11 @@
-import { useState, FormEvent } from 'react';
+import { useState, memo, type FormEvent } from 'react';
 
 interface SearchFormProps {
   onSearch: (cityName: string) => void;
   loading?: boolean;
 }
 
-export const SearchForm = ({ onSearch, loading = false }: SearchFormProps) => {
+export const SearchForm = memo(({ onSearch, loading = false }: SearchFormProps) => {
   const [cityName, setCityName] = useState('');
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -17,7 +17,7 @@ export const SearchForm = ({ onSearch, loading = false }: SearchFormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
+    <form onSubmit={handleSubmit} className="w-full" role="search">
       <div className="flex gap-2">
         <input
           type="text"
@@ -38,4 +38,6 @@ export const SearchForm = ({ onSearch, loading = false }: SearchFormProps) => {
       </div>
     </form>
   );
-};
+});
+
+SearchForm.displayName = 'SearchForm';

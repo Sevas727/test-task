@@ -1,10 +1,12 @@
+import { memo } from 'react';
+
 interface UndoNotificationProps {
   message: string;
   onUndo: () => void;
   onClose: () => void;
 }
 
-export const UndoNotification = ({ message, onUndo, onClose }: UndoNotificationProps) => {
+export const UndoNotification = memo(({ message, onUndo, onClose }: UndoNotificationProps) => {
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-4 animate-slide-up z-50">
       <span>{message}</span>
@@ -25,4 +27,6 @@ export const UndoNotification = ({ message, onUndo, onClose }: UndoNotificationP
       </div>
     </div>
   );
-};
+});
+
+UndoNotification.displayName = 'UndoNotification';
